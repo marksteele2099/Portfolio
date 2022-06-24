@@ -1,0 +1,394 @@
+---
+title: "CS 6302 Assignment 2"
+author: "Mark Steele"
+date: "September 17, 2019"
+output: pdf_document
+---
+
+```{r include=F}
+#################
+### LIBRARIES ###
+#################
+suppressMessages(library(tidyverse))
+suppressMessages(library(MASS))
+suppressMessages(library(caret))
+suppressMessages(library(e1071))
+suppressMessages(library(glmnet))
+suppressMessages(library(kernlab))
+suppressMessages(library(VennDiagram))
+```
+
+```{r echo=F}
+#################
+### CONSTANTS ###
+#################
+
+PATH <- "C:\\Users\\sykom\\Desktop\\Stuff\\College Courses\\CS 6302 Predictive Analytics\\Assignments\\Assignment 02\\big.data2_classes.txt"
+# path <- file.choose()
+```
+
+```{r echo=F}
+print("######################")
+print("### DATA REDUCTION ###")
+print("######################")
+print("")
+
+print("# Load Data")
+cell0 <- read.table(PATH,sep="\t",header=T)
+cell0$class <- factor(cell0$class)
+print(paste0("Number of columns = ", ncol(cell0)))
+print("")
+
+print("# Remove low expression proteins")
+drops <-NULL
+for(x in colnames(cell0)[-dim(cell0)[2]]){
+   if(max(cell0[x])<2){
+      drops <- c(drops, x)
+   }
+}
+
+cell1 <- cell0[!(colnames(cell0) %in% drops)]
+print(paste0("Number of columns = ", ncol(cell1)))
+print("")
+
+print("# Remove low variability proteins")
+badvar <- nearZeroVar(cell1)
+cell1.5 <- cell1[-badvar]
+print(paste0("Number of columns = ", ncol(cell1.5)))
+print("")
+
+
+# Create null hypothesis model
+null <- glm(class ~ 1,data=cell1,family ="binomial")
+
+print("# Remove ANOVA p < 0.01 proteins")
+stop1.5 <- dim(cell1.5)[2]  # Need to ignore class variable
+keeps <- NULL  # initialize vector of remaining proteins
+for(n in colnames(cell1.5[-stop1.5])){
+   tempmodel <- suppressWarnings(glm(class ~ get(n), data = cell1.5, family = "binomial"))
+   ano <- anova(null, tempmodel, test='Chisq')
+   if(ano$'Pr(>Chi)'[2] < 0.01){
+      keeps <- c(keeps, n)
+   }
+}
+# No cell1.5 column numbers
+# 0.005 -> 2500, 0.001 -> 1656
+
+# With cell1.5
+# 0.01 -> 2116, 0.0075 -> 1943, 0.005 -> 1734, 
+keeps <- c(keeps, "class")
+
+cell2 <- cell1.5[keeps]
+print(paste0("Number of columns = ", ncol(cell2)))
+print("")
+```
+
+```{r echo=F}
+# ##################################
+# ### LOGISTIC FEATURE SELECTION ###
+# ##################################
+
+# Create starting models
+# null <- glm(class ~ 1,data=cell2,family ="binomial")
+# full <- glm(class ~ .,data=cell2,family ="binomial")
+
+# f <- suppressWarnings(stepAIC(full,scope=list(lower= ~ 1,upper= ~ .),direction="both",trace=0))
+
+print("#########################")
+print("### DATA PARTITIONING ###")
+print("#########################")
+print("")
+
+set.seed(2)
+intrain <- createDataPartition(y = cell2$class,p = 0.8,list = FALSE)
+assign("training", cell2[intrain,] )
+assign("testing",  cell2[-intrain,] )
+
+predictors <- training
+predictors$class <- NULL
+response <- training$class
+
+predictors_test <- testing
+predictors_test$class <- NULL
+response_test <- testing$class
+
+
+print("################################")
+print("### REGRESSION MODEL FITTING ###")
+print("################################")
+print("")
+```
+
+```{r echo=F}
+print("# Ridge regression fit")
+
+cv.ridge.fit <- cv.glmnet(
+   as.matrix((predictors)),
+   response,
+   alpha=0,
+   nfolds = 10,
+   type.measure = "class",
+   family="binomial"
+   )
+
+print("# Confusion matrix on training set")
+print("")
+
+Pred.Ridge.Train <- predict(
+   cv.ridge.fit,
+   newx=as.matrix((predictors)),
+   type = "class",
+   s=cv.ridge.fit$lambda.min
+   )
+
+cm.Ridge.Train <- confusionMatrix(as.factor(Pred.Ridge.Train), response)
+print(cm.Ridge.Train)
+print("")
+
+print("# Confusion matrix on testing set")
+print("")
+
+Pred.Ridge.Test <- predict(
+   cv.ridge.fit,
+   as.matrix((predictors_test)),
+   type = "class",
+   s=cv.ridge.fit$lambda.min
+   )
+
+cm.Ridge.Test <- confusionMatrix(as.factor(Pred.Ridge.Test), response_test)
+print(cm.Ridge.Test)
+print("")
+```
+
+```{r echo=F}
+print("# LASSO fit")
+print("")
+
+cv.lasso.fit <- cv.glmnet(
+   as.matrix((predictors)),
+   response,
+   alpha=1,
+   nfolds = 10,
+   type.measure = "class",
+   family="binomial"
+   )
+
+print("# Confusion matrix on training set")
+print("")
+
+Pred.LASSO.Train <- predict(
+   cv.lasso.fit,
+   as.matrix((predictors)),
+   type = "class",
+   s = cv.lasso.fit$lambda.min
+   )
+
+cm.LASSO.Train <- confusionMatrix(as.factor(Pred.LASSO.Train),response)
+print(cm.LASSO.Train)
+print("")
+
+print("# Confusion matrix on testing set")
+print("")
+
+Pred.LASSO.Test <- predict(
+   cv.lasso.fit,
+   as.matrix((predictors_test)),
+   type = "class",
+   s = cv.lasso.fit$lambda.min
+   )
+
+cm.LASSO.Test <- confusionMatrix(as.factor(Pred.LASSO.Test), response_test)
+print(cm.LASSO.Test)
+print("")
+```
+
+```{r echo=F}
+print("# Elastic fit")
+print("")
+
+cv.elastic.fit <- cv.glmnet(
+   as.matrix((predictors)),
+   response,
+   alpha=0.5,
+   nfolds = 10,
+   type.measure = "class",
+   family="binomial"
+   )
+
+print("# Confusion matrix on training set")
+print("")
+
+Pred.Elastic.Train <- predict(
+   cv.elastic.fit,
+   as.matrix((predictors)),
+   type = "class",
+   s = cv.elastic.fit$lambda.min
+   )
+
+cm.Elastic.Train<- confusionMatrix(as.factor(Pred.Elastic.Train), response)
+print(cm.Elastic.Train)
+print("")
+
+print("# Confusion matrix on testing set")
+print("")
+
+Pred.Elastic.Test <- predict(
+   cv.elastic.fit,
+   as.matrix((predictors_test)),
+   type = "class",
+   s = cv.elastic.fit$lambda.min
+   )
+
+cm.Elastic.Test<- confusionMatrix(as.factor(Pred.Elastic.Test), response_test)
+print(cm.Elastic.Test)
+print("")
+```
+
+```{r echo=F}
+print("#############################")
+print("### RANDOM FOREST FITTING ###")
+print("#############################")
+print("")
+
+RF <- coef(cv.lasso.fit, s = "lambda.min")
+use <- 1 + RF@i[-1]
+RFcols <- rownames(RF)[use]
+trainingRF <- training[c(RFcols,"class")]
+
+n <- dim(trainingRF)[2]-1
+
+gridRF <- expand.grid(
+   mtry = seq(
+      from = 0,
+      by = as.integer(n/10),
+      to = n
+      )[-1]
+   )
+
+ctrl.crossRF <- trainControl(
+   method = "cv",
+   number = 10,
+   classProbs = TRUE,
+   savePredictions = TRUE,
+   allowParallel = TRUE
+   )
+
+RF.fit <- train(
+   class ~ .,
+   data = trainingRF,
+   method = "rf",
+   metric = "Accuracy",
+   preProc = c("center", "scale"),
+   ntree = 200,
+   tuneGrid = gridRF,
+   trControl = ctrl.crossRF
+   )
+
+print("# Confusion matrix on training set")
+print("")
+
+Pred.RF.Train <- predict(RF.fit, as.matrix((predictors)))
+
+cm.RF.Train<- confusionMatrix(as.factor(Pred.RF.Train), response)
+print(cm.RF.Train)
+print("")
+
+print("# Confusion matrix on testing set")
+print("")
+
+Pred.RF.Test <- predict(RF.fit, as.matrix((predictors_test)))
+
+cm.RF.Test<- confusionMatrix(as.factor(Pred.RF.Test), response_test)
+print(cm.RF.Test)
+print("")
+```
+
+```{r echo=F}
+print("###################")
+print("### SVM FITTING ###")
+print("###################")
+print("")
+
+SVM <- coef(cv.elastic.fit, s = "lambda.min")
+use <- 1 + SVM@i[-1]
+SVMcols <- c(rownames(SVM)[use]) #, "class")
+trainingSVM <- training[SVMcols]
+
+sigma <- sigest(as.matrix(trainingSVM)) # sigest returns 3 values of sigma 
+
+trainingSVM$class <- training$class
+
+gridSVM <- expand.grid(
+   sigma = sigma,
+   C = 2^seq(from=-4,by = 1, to =8)
+   ) # set up sigma and cost parameters
+
+ctrl.crossSVM <- trainControl(
+   method = "cv",
+   number = 5,
+   classProbs = TRUE,
+   savePredictions=TRUE
+   )
+
+SVM.fit <- train(
+   class ~ .,
+   data = trainingSVM,
+   perProc = c("center", "scale"),
+   method = 'svmRadial', 
+   metric ='Accuracy',
+   preProc = c("center", "scale"),
+   tuneGrid = gridSVM,
+   trControl = ctrl.crossSVM
+   )
+
+print("# Confusion matrix on training set")
+print("")
+
+Pred.SVM.Train <- predict(SVM.fit, as.matrix((predictors)))
+
+cm.SVM.Train<- confusionMatrix(as.factor(Pred.SVM.Train), response)
+print(cm.SVM.Train)
+print("")
+
+print("# Confusion matrix on testing set")
+print("")
+
+Pred.SVM.Test <- predict(SVM.fit, as.matrix((predictors_test)))
+
+cm.SVM.Test<- confusionMatrix(as.factor(Pred.SVM.Test), response_test)
+print(cm.SVM.Test)
+print("")
+```
+
+```{r echo=F}
+print("####################")
+print("### VENN DIAGRAM ###")
+print("####################")
+print("")
+
+vendi <- get.venn.partitions(list(RFcols, SVMcols))
+
+ven.labels <- c("SVMcols", "RFcols") #  "SVMcols ??? RFcols",
+
+# diagram <- data.frame(
+#    "Only SVMcols" = vendi$..values..$`2`,
+#    "RFcols ??? SVMcols" = vendi$..values..$`1`,
+#    "Only RFcols" = vendi$..values..$`3`
+# )
+
+counts <- c(
+   vendi$..count..[2] + vendi$..count..[1],
+   vendi$..count..[3] + vendi$..count..[1],
+   vendi$..count..[1]
+)
+
+venn.plot <- draw.pairwise.venn(
+   counts[1],
+   counts[2],
+   counts[3],
+   ven.labels
+   )
+
+grid.newpage()
+grid.draw(venn.plot)
+```
