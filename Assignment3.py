@@ -114,10 +114,10 @@ def get_images(label_path, image_path, name="dataset"):
 
     print('number of {0} images: '.format(name), len(labels.keys()))
 
-    files = listdir(image_path)
+    images = listdir(image_path)
 
     #creating numpy matrix/tensor to store the images
-    I = io.imread(image_path + files[0])
+    I = io.imread(image_path + images[0])
     x = np.empty(shape = \
                      (len(files), \
                       I.shape[0], \
@@ -132,14 +132,13 @@ def get_images(label_path, image_path, name="dataset"):
     for i in range(0,len(files)):
         if(i%1000 == 0):
             print('done processing ' + str(i) + ' {0} images'.format(name))
-        I = io.imread(image_path + files[i])
-        x[i, : , : , : ] = I
-        y[i] = int(labels[files[i]])
+        x[i, : , : , : ] = io.imread(image_path + images[i])
+        y[i] = int(labels[images[i]])
     
     return x, y
 
 
-def augment_images(label_path, image_path, aug_path, new_path, name, rots):
+def augment_images(label_path, image_path, aug_path, new_path, name="dataset", rotations):
     """
     Function to artificially increase the size of image datasets.
     :param label_path: file path string for dataset labels location
@@ -147,7 +146,7 @@ def augment_images(label_path, image_path, aug_path, new_path, name, rots):
     :param aug_path: file path string for augmented dataset images location
     :param new_path: file path string for augmented dataset labels location
     :param name: optional string for naming the dataset
-    :param rots: number of versions of rotated images to create
+    :param rotations: number of versions of rotated images to create
     :returns: numpy arrays of images and their labels, respectively
     """
     labels = {}
@@ -160,48 +159,48 @@ def augment_images(label_path, image_path, aug_path, new_path, name, rots):
     print('number of {0} images: '.format(name), len(labels.keys()))
 
     #makes a directory
-    files = listdir(image_path)
+    images = listdir(image_path)
     os.makedirs(aug_path)
 
     new_labels = {}
-    for i in range(0, len(files)):
+    for i in range(0, len(images)):
         if(i%1000 == 0):
             print('done processing ' + str(i) + ' {0} images'.format(name))
-        I = io.imread(image_path + files[i])
-        new_labels[files[i]] = labels[files[i]]
-        io.imsave(aug_path + files[i], I)
-        for j in range(0, rots):
+        I = io.imread(image_path + images[i])
+        new_labels[images[i]] = labels[images[i]]
+        io.imsave(aug_path + images[i], I)
+        for j in range(0, rotations):
             I1 = skimage.transform.rotate(I, \
                                           angle = np.random.uniform(-45, 45))
             #print(I1.shape)
-            newFile = "rotated_" + str(j) + "_" + files[i]
+            newImage = "rotated_" + str(j) + "_" + images[i]
             # img_as_ubyte needed to supress conversion warnings
-            io.imsave(aug_path + newFile, img_as_ubyte(I1))
-            new_labels[newFile] = labels[files[i]]
+            io.imsave(aug_path + newImage, img_as_ubyte(I1))
+            new_labels[newImage] = labels[images[i]]
                                 
     with open(new_path, "w") as f:
         for keys in new_labels.keys():
             f.write(keys + "\t" + new_labels[keys] + "\n")
     
     #creating numpy matrix/tensor to store the images
-    files = listdir(aug_path)
+    aug_images = listdir(aug_path)
     x = np.empty(shape = \
-                     (len(files), \
+                     (len(aug_images), \
                       I.shape[0], \
                       I.shape[1], \
                       I.shape[2]), \
                  dtype = np.int)
 
     #creating numpy matrix to store the labels
-    y = np.empty(shape=(len(files)), dtype = np.int)
+    y = np.empty(shape=(len(aug_images)), dtype = np.int)
     print(x.shape)
     print(y.shape)
-    for i in range(0,len(files)):
+    for i in range(0,len(aug_images)):
         if(i%2000 == 0):
             print('done processing ' + str(i) + ' {0} images'.format(name))
-        I = io.imread(aug_path + files[i])
+        I = io.imread(aug_path + aug_images[i])
         x[i, : , : , : ] = I
-        y[i] = int(new_labels[files[i]])
+        y[i] = int(new_labels[aug_images[i]])
     
     return x, y
 
@@ -218,6 +217,7 @@ def model(x, y, save_path, learn):
     OPTIMIZER = Adam(lr = learn)
 
     cnn_model = Sequential()
+
     cnn_model.add(Conv2D(NUM_KERNELS, \
                           kernel_size = KERN_SIZE, \
                           padding = PADDING, \
@@ -234,7 +234,7 @@ def model(x, y, save_path, learn):
                           padding = PADDING, \
                           kernel_initializer = KERNAL_INIT, \
                           input_shape = INPUT_SHAPE))  # , \
-                          # data_format='channels_last'))
+                          # data_format = 'channels_last'))
     cnn_model.add(Activation(HIDDEN_ACT))
     cnn_model.add(MaxPooling2D(pool_size = POOL_SIZE))
     cnn_model.add(BatchNormalization())
@@ -245,12 +245,14 @@ def model(x, y, save_path, learn):
     cnn_model.add(Activation(HIDDEN_ACT))
     cnn_model.add(BatchNormalization())
     cnn_model.add(Dropout(0.5))
+    
     cnn_model.add(Dense(NB_CLASSES))
     cnn_model.add(Activation(OUTPUT_ACT))
+
     cnn_model.compile(loss = LOSS, optimizer = OPTIMIZER, metrics = METRICS)
     
     print(cnn_model.summary())
-    # filepath='cifar_best_cnn_model2.hdf5'
+    # filepath ='cifar_best_cnn_model2.hdf5'
     checkpoint = ModelCheckpoint(save_path, \
                                  monitor = MONITOR, \
                                  verbose = VERBOSE, \
@@ -272,7 +274,7 @@ def model(x, y, save_path, learn):
 def plotHistory(tuning):
     """
     Function for plotting the training history of a model
-    :param tuning: keras model whose history os to be plotted
+    :param tuning: keras model whose history is to be plotted
     :returns: Nothing
     """
     fig, axs = plt.subplots(1,2,figsize=(15,5))
@@ -322,8 +324,8 @@ def main():
                                               NUM_ROTATE)
 
     x_test, y_test = get_images(test_label_file, \
-                                  test_image_dir, \
-                                  "testing set")
+                                test_image_dir, \
+                                "testing set")
 
     # Save datasets in h5 format
     with h5py.File(saved_data_file, 'w') as hf:
