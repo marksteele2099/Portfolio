@@ -69,7 +69,7 @@ PADDING = "valid"
 HIDDEN_ACT = "relu"
 OUTPUT_ACT = "sigmoid"
 
-PATH = 'C:/Users/sykom/Desktop/Stuff/College Courses/' + \
+PATH = 'C:/Stuff/College Courses/' + \
        'CS 6302 Predictive Analytics/Assignments/' + \
        'Assignment 03/'
 # os.chdir(PATH)  # might make PATH prefixes unnecessary but not recommended
