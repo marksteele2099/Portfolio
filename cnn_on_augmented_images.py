@@ -1,7 +1,5 @@
 """
-Python Code for Assignment 3
-CS 6302 Predictive Analytics
-11/2/2019
+CNN on Augmented Image Dataset
 
 Code by Mark Steele
 """
