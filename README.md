@@ -1,5 +1,7 @@
 "# Portfolio" 
-This is a portfolio of some of my programming work. I know it's sparse right now, but I hope to expand it in the future with more projects. I also plan to update and/or combine older projects to better reflect my current programming style and ability.
+Welcome to my portfolio!
+
+This is a work in progress, so please pardon the dust, but more will be coming soon!
 
 Currently, there are three projects.
 
