@@ -5,7 +5,7 @@ This is a work in progress, so please pardon the dust, but more will be coming s
 
 At the moment there are three projects.
 
-cnn_on_augmented_images.py was a class assignment for my Predictive Analytics class, written in Python. The goal of the assignment was to first inflate the size of a small dataset of images by augmenting via random rotations, then to train a convolutional neural net on the augmented images, and check it's accuracy for classifying the images.
+cnn_on_augmented_images.py was a class assignment for my Predictive Analytics class, written in Python. The goal of the assignment was to first inflate the size of a small dataset of images by augmenting them via random rotations, then to train a convolutional neural net on the augmented images, and check it's accuracy for classifying the images.
 
 showcase_of_predictive_algorithms.Rmd was another Predictive Analytics assignment, this time written in R Markdown. For this assignment, the goal was to implement and compare various predictive algorithms on the same dataset of proteins. 
 
