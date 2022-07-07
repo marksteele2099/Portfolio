@@ -1,24 +1,41 @@
 Public Function DIVSUM(ByVal n As LongLong) As LongLong
-    Dim cumsum As LongLong   'Even though this is a sum it will be calculated with products
-    Dim i As Long            'Iterator for For loops
-    Dim currsum As Long      'Cumulative sum of powers of the current prime factor
-    Dim currterm As Long     'Current power of the current prime factor
 
-    cumsum = 1               '1 divides every natural number, including itself
+    'This divisor sum function uses several ideas from
+    'number theory to speed up the process of finding 
+    'the sum. First, the fundamental theorem of arithmetic
+    'allows the sum to be factored into geometric series
+    'of all the powers of its various prime factors. Second,
+    '1 is always a factor which gives a nice starting point
+    'for each prime's geometric series. Third, prime factors
+    'only need to be checked up to the square root of a
+    'given number, and if no prime divides the number by then,
+    'the number must be prime. Finally, the largest speed up
+    'comes from the fact that all primes >3 must be in the
+    'form of either 6*m-1 or 6*m+1, for some m in the natural
+    'numbers, which reduces the set of potential divisors
+    'that need to be checked significantly.
+
+
+    Dim cumsum As LongLong                    'Even though this is a sum it will be calculated with products
+    Dim i As Long                             'Iterator for the For loops
+    Dim currsum As Long                       'Cumulative sum of powers of the current prime factor
+    Dim currterm As Long                      'Current power of the current prime factor
+
+    cumsum = 1                                '1 divides every natural number, including itself
 
     For i = 2 To 3
-        currsum = 1      '1 is always a factor
+        currsum = 1                           '1 is always a factor
         currterm = 1
-        While ((n Mod i) = 0)            'If 2 or 3 are not prime factors ignore them
-            n = n / i                    'If 2 or 3 is a factor, reduce original number by it
-            currterm = currterm * i      'Increments the exponent of the current factor by 1
-            currsum = currsum + currterm 'Increases factor sum of the current prime by current power term
+        While ((n Mod i) = 0)                 'If 2 or 3 are not prime factors ignore them
+            n = n / i                         'If 2 or 3 is a factor, reduce original number by it
+            currterm = currterm * i           'Increments the exponent of the current factor by 1
+            currsum = currsum + currterm      'Increases factor sum of the current prime by current power term
         Wend
         cumsum = cumsum * currsum
     Next i
 
-    For i = 1 To ((Sqr(n) + 1) / 6)
-        currsum = 1      '1 is always a factor
+    For i = 1 To ((Sqr(n) + 1) / 6)           'Need to add 1 to ensure square root itself is also checked
+        currsum = 1                           '1 is always a factor
         currterm = 1
         While ((n Mod (6 * i - 1)) = 0)       'Ignore numbers that are not prime factors
             n = n / (6 * i - 1)               'Once a factor is found we can reduce original number by it
