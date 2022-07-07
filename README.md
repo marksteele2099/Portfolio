@@ -1,4 +1,3 @@
-"# Portfolio" 
 Welcome to my portfolio!
 
 This is a work in progress, so please pardon the dust, but more will be coming soon!
