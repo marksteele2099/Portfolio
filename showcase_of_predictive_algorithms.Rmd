@@ -1,7 +1,6 @@
 ---
-title: "CS 6302 Assignment 2"
+title: "Showcase of Predictive Algorithms"
 author: "Mark Steele"
-date: "September 17, 2019"
 output: pdf_document
 ---
 
